@@ -67,3 +67,29 @@ def save_media_as_csv(all_media: List[Dict[str, Any]], client_name: str, since: 
 
     except Exception as e:
         print(f"[❌] Errore durante il salvataggio CSV per {client_name}: {e}")
+
+
+def save_text_report(report_text: str, client_name: str, since: str, until: str, report_name: str) -> None:
+    """
+    Salva un report testuale in un file .txt nella cartella output per il cliente.
+
+    :param report_text: contenuto testuale da salvare
+    :param client_name: nome cliente
+    :param since: data inizio (YYYY-MM-DD)
+    :param until: data fine (YYYY-MM-DD)
+    :param report_name: nome descrittivo per il report (es. 'publication_frequency_report')
+    """
+    try:
+        folder_path = os.path.join("output", client_name)
+        os.makedirs(folder_path, exist_ok=True)
+
+        filename = f"{report_name}_{since}_{until}.txt"
+        file_path = os.path.join(folder_path, filename)
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(report_text)
+
+        print(f"[💾] Report '{report_name}' salvato in {file_path}")
+
+    except Exception as e:
+        print(f"[❌] Errore durante il salvataggio report '{report_name}' per {client_name}: {e}")
