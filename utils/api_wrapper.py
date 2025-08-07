@@ -51,8 +51,12 @@ def get(url: str, params: Optional[Dict[str, Any]] = None) -> Any:
 
         if response.status_code >= 400:
             logger.error(f"Errore API {response.status_code}: {response.text}")
-            response.raise_for_status()
-
+            try:
+                error_data = response.json().get("error", {"message": response.text, "code": response.status_code})
+            except Exception:
+                error_data = {"message": response.text, "code": response.status_code}
+            return {"error": error_data}
+        
         try:
             data = response.json()
         except ValueError as e:
@@ -88,7 +92,11 @@ def post(url: str, data: Optional[Dict[str, Any]] = None) -> Any:
 
         if response.status_code >= 400:
             logger.error(f"Errore API {response.status_code}: {response.text}")
-            response.raise_for_status()
+            try:
+                error_data = response.json().get("error", {"message": response.text, "code": response.status_code})
+            except Exception:
+                error_data = {"message": response.text, "code": response.status_code}
+            return {"error": error_data}
 
         try:
             payload = response.json()

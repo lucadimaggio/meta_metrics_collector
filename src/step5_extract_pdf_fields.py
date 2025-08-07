@@ -7,14 +7,29 @@ from utils.logger import get_logger, log_exceptions
 
 logger = get_logger(__name__)
 
+def safe_int(val):
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return 0
+
+def safe_float(val):
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 
 @log_exceptions
 def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
     input_csv_path = os.path.join("output", client_name, f"content_report_{since}_{until}.csv")
     output_json_path = os.path.join("output", client_name, f"pdf_fields_{since}_{until}_with_images.json")
 
+    logger.info(f"Verifico esistenza file CSV: {input_csv_path}")
     if not os.path.exists(input_csv_path):
         logger.error(f"File CSV non trovato: {input_csv_path}")
+        logger.error("Assicurati che il file CSV venga generato correttamente dopo lo step 4 (analisi contenuti).")
         return
 
     with open(input_csv_path, newline='', encoding="utf-8") as csvfile:
@@ -24,17 +39,25 @@ def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
         for row in reader:
             try:
                 post = {
-                    "id": row["id"],
-                    "timestamp": row["timestamp"],
-                    "permalink": row["permalink"],
-                    "quality_score": float(row["quality_score"]),
-                    "media_type": row["media_type"],
-                    "media_url": row["media_url"],
-                    "caption": row["caption"]
+                    "id": row.get("id", ""),
+                    "timestamp": row.get("timestamp", ""),
+                    "permalink": row.get("permalink", ""),
+                    "quality_score": safe_float(row.get("quality_score", 0)),
+                    "media_type": row.get("media_type", ""),
+                    "media_url": row.get("media_url", ""),
+                    "caption": row.get("caption", ""),
+                    "impressions": safe_int(row.get("impressions", 0)),
+                    "reach": safe_int(row.get("reach", 0)),
+                    "saved": safe_int(row.get("saved", 0)),
+                    "video_views": safe_int(row.get("video_views", 0)),
+                    "like_count": safe_int(row.get("like_count", 0)),
+                    "comments_count": safe_int(row.get("comments_count", 0)),
+                    "engagement_rate": safe_float(row.get("engagement_rate", 0.0)),
                 }
                 posts.append(post)
-            except ValueError:
-                logger.warning(f"quality_score non valido per post ID: {row.get('id')}")
+            except Exception as e:
+                logger.warning(f"Errore creando post da riga CSV: {e}")
+
 
     if not posts:
         logger.warning("Nessun post valido trovato nel CSV.")
@@ -50,7 +73,7 @@ def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
     for i, post in enumerate(posts[:max_show], 1):
         logger.info(f"Post {i}: id={post.get('id')}, timestamp={post.get('timestamp')}, permalink={post.get('permalink')}, media_type={post.get('media_type')}")
 
-    prompt = "Vuoi proseguire con questi campi? (s = sì, n = no):"
+    prompt = "Vuoi proseguire con questi campi? (s = sì, n = no): "
     logger.info(prompt)
     risposta = input(prompt).strip().lower()
     if risposta != 's':
@@ -68,7 +91,11 @@ def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
     # Prepara dati per JSON
     top_posts_data = []
     for idx, post in enumerate(top_posts, 1):
-        date_formatted = datetime.fromisoformat(post['timestamp']).strftime('%Y-%m-%d')
+        try:
+            date_formatted = datetime.fromisoformat(post['timestamp']).strftime('%Y-%m-%d')
+        except ValueError:
+            logger.warning(f"Timestamp non valido per post ID {post['id']}: {post['timestamp']}, uso valore originale.")
+            date_formatted = post['timestamp']
 
         image_local_path = os.path.join("media", client_name, f"post_{idx}.jpg")
         logger.info(f"Assigning local_img_path for post {idx}: {image_local_path}")
@@ -81,7 +108,15 @@ def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
             "media_url": post["media_url"],  # URL remoto mantenuto
             "local_img_path": image_local_path,  # Percorso locale aggiunto
             "quality_score": post["quality_score"],
-            "caption": post["caption"][:100]  # Caption sintetica, max 100 caratteri
+            "caption": post["caption"][:100],  # Caption sintetica, max 100 caratteri
+            # Nuove metriche aggiuntive
+            "impressions": post["impressions"],
+            "reach": post["reach"],
+            "saved": post["saved"],
+            "video_views": post["video_views"],
+            "like_count": post["like_count"],
+            "comments_count": post["comments_count"],
+            "engagement_rate": post["engagement_rate"],
         }
         logger.info(f"Post {idx} data: {post_data}")
 
@@ -99,6 +134,7 @@ def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
 def main():
     if len(sys.argv) < 4:
         logger.error("Uso: python step5_extract_top_posts.py <client_name> <since> <until>")
+        sys.exit(1)
     else:
         client_name = sys.argv[1]
         since = sys.argv[2]

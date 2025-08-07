@@ -4,7 +4,7 @@ import json
 from functools import wraps
 from datetime import datetime
 
-# Attempt to use RichHandler for pretty console output if available
+# RichHandler for enhanced console formatting, if available
 try:
     from rich.logging import RichHandler
     _RICH_AVAILABLE = True
@@ -16,61 +16,77 @@ class JsonFormatter(logging.Formatter):
     Formatter that outputs logs in JSON format.
     """
     def format(self, record: logging.LogRecord) -> str:
-        record_dict = {
+        data = {
             "timestamp": datetime.utcfromtimestamp(record.created).isoformat() + "Z",
             "level": record.levelname,
-            "name": record.name,
+            "logger": record.name,
             "message": record.getMessage(),
         }
         if record.exc_info:
-            record_dict["exc_info"] = self.formatException(record.exc_info)
-        return json.dumps(record_dict)
+            data["exception"] = self.formatException(record.exc_info)
+        return json.dumps(data)
 
 
 def get_logger(name: str) -> logging.Logger:
     """
-    Factory for creating a configured logger.
+    Returns a singleton logger configured with environment settings.
 
-    Reads environment variables:
-    - LOG_LEVEL: logging level (default: INFO)
-    - LOG_JSON: if true, emits JSON-formatted logs
+    Environment variables:
+      - LOG_LEVEL: one of DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
+      - LOG_JSON: enable JSON output if true (default: false)
     """
-    # Determine log level
-    level_name = os.getenv("LOG_LEVEL", "INFO").upper()
-    # Validate level_name
-    if level_name not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
-        level_name = "INFO"
-    level = getattr(logging, level_name)
-    json_output = os.getenv("LOG_JSON", "false").lower() in ("1", "true", "yes", "y")
+    # Read and validate log level
+    level_str = os.getenv("LOG_LEVEL", "INFO").upper()
+    if level_str not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+        level_str = "INFO"
+    level = getattr(logging, level_str)
 
+    # Read JSON output flag
+    json_flag = os.getenv("LOG_JSON", "false").lower() in ("1", "true", "yes", "y")
+
+    # Get or create logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    logger.propagate = False
+    logger.propagate = False  # prevent double logging
 
+    # Configure handlers once
     if not logger.handlers:
-        # Console handler
+        # Console Handler
         if _RICH_AVAILABLE:
-            console_handler = RichHandler(rich_tracebacks=True)
+            console = RichHandler(rich_tracebacks=True)
+            console.setLevel(level)
+            logger.addHandler(console)
+            logger.debug("RichHandler enabled for console output")
         else:
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(
-                logging.Formatter("%(levelname)s | %(asctime)s | %(name)s | %(message)s")
+            console = logging.StreamHandler()
+            console.setLevel(level)
+            fmt = logging.Formatter(
+                "%(levelname)s | %(asctime)s | %(name)s | %(message)s"
             )
-        console_handler.setLevel(level)
-        logger.addHandler(console_handler)
+            console.setFormatter(fmt)
+            logger.addHandler(console)
+            logger.debug("Standard StreamHandler enabled for console output")
 
-        if json_output:
+        # JSON Handler
+        if json_flag:
             json_handler = logging.StreamHandler()
             json_handler.setLevel(level)
             json_handler.setFormatter(JsonFormatter())
             logger.addHandler(json_handler)
+            logger.debug("JsonFormatter enabled for JSON output")
+
+        # Report configuration summary
+        logger.info(f"Logger '{name}' initialized at level {level_str}")
+        if json_flag:
+            logger.info("JSON logging is enabled")
 
     return logger
 
 
 def log_exceptions(func):
     """
-    Decorator to log unhandled exceptions with full traceback, then re-raise.
+    Decorator: logs any unhandled exceptions in the function, including traceback.
+    Re-raises the original exception after logging.
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -78,19 +94,23 @@ def log_exceptions(func):
         try:
             return func(*args, **kwargs)
         except Exception:
-            logger.exception(f"Unhandled exception in {func.__qualname__}")
+            logger.exception(f"Exception in {func.__qualname__}")
             raise
     return wrapper
 
 
 def log_step_start(step_number: int, description: str):
     """
-    Helper to log the start of a processing step.
+    Logs the start of a processing step at INFO level.
     """
-    logger = get_logger(f"step_{step_number}")
-    logger.info(f"🚀 Avvio Step {step_number}: {description}")
+    name = f"step_{step_number}"
+    logger = get_logger(name)
+    message = f"🚀 Starting Step {step_number}: {description}"
+    logger.info(message)
 
-# Initialize root logger and emit test logs
-_root_logger = get_logger("root")
-_root_logger.info("Centralized logger initialized at INFO level")
-_root_logger.debug("Centralized logger DEBUG test: debug-level logs will appear if LOG_LEVEL=DEBUG")
+# Example: Initialize root logger configuration when this module is imported
+if __name__ != '__main__':
+    root_logger = get_logger('meta_metrics_collector')
+    root_logger.info("Centralized logger module loaded for Meta Metrics Collector")
+
+# FILE: utils/logger.py

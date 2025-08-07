@@ -114,6 +114,13 @@ def generate_pdf(client_name, since, until):
             metrics_lines = [
                 f"Data: {formatted_date}",
                 f"Score: {post.get('quality_score', '')}",
+                f"Impressions: {post.get('impressions', 'N/A')}",
+                f"Reach: {post.get('reach', 'N/A')}",
+                f"Saved: {post.get('saved', 'N/A')}",
+                f"Video views: {post.get('video_views', 'N/A')}",
+                f"Like count: {post.get('like_count', 'N/A')}",
+                f"Comments count: {post.get('comments_count', 'N/A')}",
+                f"Engagement rate: {post.get('engagement_rate', 'N/A')}",
                 "Link al post"
             ]
 

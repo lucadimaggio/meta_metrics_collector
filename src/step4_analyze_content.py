@@ -8,6 +8,8 @@ from collections import Counter
 import csv
 import logging
 
+from utils.save_utils import save_media_as_json, save_media_as_csv, save_text_report
+
 logger = logging.getLogger(__name__)
 
 OUTPUT_DIR = "output"
@@ -39,6 +41,23 @@ def analyze_media(media: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         caption_length = len(caption)
         num_hashtags = len(re.findall(r"#\w+", caption))
 
+        like_count = m.get("like_count")
+        comments_count = m.get("comments_count")
+        saved = m.get("saved")
+        impressions = m.get("impressions")
+
+        engagement_rate = None
+        try:
+            if (like_count is None or comments_count is None or saved is None or impressions is None):
+                logger.warning(f"Metriche social mancanti per media ID {m.get('id', 'unknown')}")
+            elif impressions == 0:
+                logger.warning(f"Impressions pari a zero per media ID {m.get('id', 'unknown')}, impossibile calcolare engagement.")
+            else:
+                engagement_rate = (like_count + comments_count + saved) / impressions
+                logger.debug(f"Calcolato engagement rate {engagement_rate:.4f} per media ID {m.get('id', 'unknown')}")
+        except Exception as e:
+            logger.warning(f"Errore calcolo engagement per media ID {m.get('id', 'unknown')}: {e}")
+
         result = {
             "id": m.get("id"),
             "caption": caption,
@@ -50,6 +69,11 @@ def analyze_media(media: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "tone": detect_tone(caption),
             "hashtag_count": num_hashtags,
             "timestamp": timestamp[:10] if timestamp else "",
+            "like_count": like_count,
+            "comments_count": comments_count,
+            "saved": saved,
+            "impressions": impressions,
+            "engagement_rate": engagement_rate,
         }
 
         score = 0
@@ -155,9 +179,85 @@ def analyze_publication_frequency(media_list: List[Dict], since: str, until: str
             "report_text": "Errore durante analisi frequenza pubblicazioni."
         }
 
+def calculate_average_reel_duration(media_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    logger.info("Inizio calcolo durata media reel/video.")
+    durations = []
+    count = 0
+    for media in media_list:
+        media_type = media.get("media_type", "").upper()
+        if media_type in ("REEL", "VIDEO"):
+            duration = media.get("duration")
+            if duration is None:
+                logger.warning(f"Durata mancante per media ID {media.get('id', 'unknown')}")
+                continue
+            try:
+                dur_sec = float(duration)
+                durations.append(dur_sec)
+                count += 1
+            except Exception as e:
+                logger.warning(f"Errore nel parsing durata per media ID {media.get('id', 'unknown')}: {e}")
+    average = sum(durations) / count if count > 0 else 0.0
+    logger.info(f"Calcolata durata media su {count} contenuti: {average:.2f} secondi.")
+    return {
+        "average_duration_seconds": average,
+        "count": count
+    }
+
+def integrated_analysis(media_list: List[Dict[str, Any]], since: str, until: str, client_name: str) -> Dict[str, Any]:
+    logger.info(f"Avvio analisi integrate per cliente {client_name} da {since} a {until}.")
+    results = {}
+
+    try:
+        media_counts = count_media_types(media_list)
+        logger.info(f"Conteggio media types: {media_counts}")
+        results['media_counts'] = media_counts
+
+        freq_stats = analyze_publication_frequency(media_list, since, until)
+        logger.info(f"Statistiche frequenza pubblicazioni: {freq_stats['stats']}")
+        results['frequency_stats'] = freq_stats
+
+        duration_stats = calculate_average_reel_duration(media_list)
+        logger.info(f"Statistiche durata media reel/video: {duration_stats}")
+        results['duration_stats'] = duration_stats
+
+        save_media_as_json(results, client_name, since, until)
+        logger.info("Salvataggio file JSON completato.")
+
+        analyzed_media = analyze_media(media_list)
+        # Modifica: salva CSV nella cartella output/{client_name} con nome content_report_{since}_{until}.csv
+        folder_path = os.path.join(OUTPUT_DIR, client_name)
+        os.makedirs(folder_path, exist_ok=True)
+        output_csv_path = os.path.join(folder_path, f"content_report_{since}_{until}.csv")
+        save_media_as_csv(analyzed_media, client_name, since, until, output_path=output_csv_path)
+        logger.info(f"Salvataggio file CSV completato in {output_csv_path}.")
+
+
+
+
+        report_text = (
+            f"Report Analisi integrate per {client_name} da {since} a {until}:\n\n"
+            f"{freq_stats['report_text']}\n"
+            f"Durata media reel/video: {duration_stats['average_duration_seconds']:.2f} secondi\n"
+            f"Conteggio media types:\n"
+        )
+        for media_type, count in media_counts.items():
+            report_text += f" - {media_type}: {count}\n"
+
+        save_text_report(report_text, client_name, since, until, "integrated_analysis_report")
+        logger.info("Salvataggio report testuale completato.")
+
+        logger.info("Analisi integrate completate con successo.")
+        return results
+
+    except Exception as e:
+        logger.error(f"Errore durante l'analisi integrata: {e}", exc_info=True)
+        return {}
+
 def run_analysis(client_name: str, since: str, until: str) -> None:
+    logger.info(f"Inizio run_analysis per cliente {client_name} da {since} a {until}.")
     file_path = os.path.join(MEDIA_DIR, client_name, f"raw_media_{since}_{until}.json")
     if not os.path.exists(file_path):
+        logger.error(f"File non trovato: {file_path}")
         print(f"[❌] File non trovato: {file_path}")
         return
 
@@ -165,44 +265,13 @@ def run_analysis(client_name: str, since: str, until: str) -> None:
         media = json.load(f)
 
     if not media:
+        logger.warning(f"Nessun contenuto da analizzare per {client_name}.")
         print(f"[⚠️] Nessun contenuto da analizzare per {client_name}.")
         return
 
-    results = analyze_media(media)
-    save_json(results, client_name, since, until)
-    save_csv(results, client_name, since, until)
-
-    media_counts = count_media_types(media)
-    logger.info(f"Conteggio media types per cliente {client_name} da {since} a {until}: {media_counts}")
-
-    frequency_analysis = analyze_publication_frequency(media, since, until)
-    logger.info(f"Report frequenza pubblicazioni:\n{frequency_analysis['report_text']}")
-
-    # Salva report testuale su file
-    report_folder = os.path.join(OUTPUT_DIR, client_name)
-    os.makedirs(report_folder, exist_ok=True)
-    report_path = os.path.join(report_folder, f"publication_frequency_report_{since}_{until}.txt")
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(frequency_analysis["report_text"])
-
+    integrated_analysis(media, since, until, client_name)
+    logger.info(f"Analisi completata per {client_name}. Report salvato.")
     print(f"[✅] Analisi completata per {client_name}. Report salvato.")
-
-def save_json(data: List[Dict[str, Any]], client_name: str, since: str, until: str):
-    folder = os.path.join(OUTPUT_DIR, client_name)
-    os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, f"content_report_{since}_{until}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-def save_csv(data: List[Dict[str, Any]], client_name: str, since: str, until: str):
-    folder = os.path.join(OUTPUT_DIR, client_name)
-    os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, f"content_report_{since}_{until}.csv")
-    if data:
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=data[0].keys())
-            writer.writeheader()
-            writer.writerows(data)
 
 def main():
     parser = argparse.ArgumentParser()

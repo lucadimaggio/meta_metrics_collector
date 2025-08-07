@@ -1,5 +1,11 @@
+Report Analisi integrate per 55Bijoux da 2025-07-01 a 2025-08-01:
+
 Analisi pubblicazioni dal 2025-07-01 al 2025-08-01:
 Totale giorni: 32
 Giorni attivi: 7
 Giorni di pausa: 25
 Giorni con picco di pubblicazione (1 contenuti): 2025-07-29, 2025-07-28, 2025-07-21, 2025-07-17, 2025-07-09, 2025-07-08, 2025-07-01
+
+Durata media reel/video: 0.00 secondi
+Conteggio media types:
+ - VIDEO: 7

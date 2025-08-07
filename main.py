@@ -9,8 +9,7 @@ import src.step2_get_ig_user as step2_get_ig_user
 import src.step3_get_media as step3_get_media
 from utils.token_utils import load_token
 from utils.client_utils import save_client_data, load_client_data
-from utils.save_utils import save_media_as_json, save_media_as_csv
-from src.step4_analyze_content import run_analysis, count_media_types, analyze_publication_frequency  # <-- IMPORT aggiunto
+from src.step4_analyze_content import integrated_analysis
 from src.step5_extract_pdf_fields import extract_top_posts
 from src.step6_prepare_images import prepare_images
 from src.step7_prepare_data import prepare_data
@@ -115,6 +114,8 @@ if __name__ == "__main__":
 
     # 7. Recupera media
     ask_to_continue(3, logger, auto_yes=args.yes_all)
+    all_media = []
+
     for page_id in config["page_ids"]:
         ig_user_id = config["client_data"][page_id]["ig_user_id"]
 
@@ -126,42 +127,35 @@ if __name__ == "__main__":
             ig_user_id,
             config["access_token"],
             config["since_unix"],
-            config["until_unix"]
+            config["until_unix"],
+            client_name = config["client_name"]
+
         )
 
         logger.info(f"[📸] Trovati {len(media)} media per {page_id}")
+        all_media.extend(media)
 
-        # ✅ Conteggio media types e analisi frequenza pubblicazioni
-        if media:
-            media_counts = count_media_types(media)
-            logger.info(f"📊 Conteggio media types: {media_counts}")
-
-            try:
-                frequency_result = analyze_publication_frequency(media, since, until)
-                logger.info(f"📅 Report frequenza pubblicazioni:\n{frequency_result['report_text']}")
-            except Exception as e:
-                logger.error(f"❌ Errore durante l'analisi della frequenza pubblicazioni: {e}")
-
-            save_media_as_json(media, config["client_name"], since, until)
-            save_media_as_csv(media, config["client_name"], since, until)
-            logger.info(f"[💾] Media salvati in media/{config['client_name']}/")
-        else:
-            logger.warning("[!] Nessun media trovato da salvare.")
-
-    # 8. Analizza i contenuti
-    ask_to_continue(4, logger, auto_yes=args.yes_all)
-    run_analysis(config["client_name"], since, until)
+    # 8. Analisi integrata dei media
+    if all_media:
+        try:
+            logger.info("📊 Avvio analisi integrata dei contenuti...")
+            integrated_analysis(all_media, since, until, config["client_name"])
+            logger.info("📊 Analisi contenuti completata con successo")
+        except Exception as e:
+            logger.error(f"❌ Errore durante l'analisi integrata dei contenuti: {e}")
+    else:
+        logger.warning("[!] Nessun media trovato da analizzare.")
 
     # 9. Estrai top post
-    ask_to_continue(5, logger, auto_yes=args.yes_all)
+    ask_to_continue(4, logger, auto_yes=args.yes_all)
     extract_top_posts(config["client_name"], since, until)
 
     # 10. Prepara immagini per il PDF
-    ask_to_continue(6, logger, auto_yes=args.yes_all)
+    ask_to_continue(5, logger, auto_yes=args.yes_all)
     prepare_images(config["client_name"], since, until, config["access_token"])
 
     # 11. Genera PDF
-    ask_to_continue(7, logger, auto_yes=args.yes_all)
+    ask_to_continue(6, logger, auto_yes=args.yes_all)
     try:
         generate_pdf(config["client_name"], since, until)
         logger.info(f"[✅] PDF generato in output/{config['client_name']}/analisi_post_{since}_{until}.pdf")
