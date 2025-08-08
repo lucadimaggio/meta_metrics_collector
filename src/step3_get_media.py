@@ -31,7 +31,7 @@ def get_insights_with_fallback(media_id: str, access_token: str) -> Dict[str, in
         try:
             logger.debug(f"Chiamata insights full metrics per media {media_id}, tentativo {attempt}")
             resp = api_get(
-                f"https://graph.facebook.com/v18.0/{media_id}/insights",
+                f"https://graph.facebook.com/v23.0/{media_id}/insights",
                 params={"metric": full_metrics, "access_token": access_token}
             )
             if "error" not in resp:
@@ -59,7 +59,7 @@ def get_insights_with_fallback(media_id: str, access_token: str) -> Dict[str, in
     try:
         logger.debug(f"Chiamata insights fallback metrics per media {media_id}")
         resp = api_get(
-            f"https://graph.facebook.com/v18.0/{media_id}/insights",
+            f"https://graph.facebook.com/v23.0/{media_id}/insights",
             params={"metric": fallback_metrics, "access_token": access_token}
         )
         if "error" not in resp:
@@ -84,211 +84,228 @@ def parse_insights_data(resp: Dict[str, Any]) -> Dict[str, int]:
     return metrics
 
 @log_exceptions
-def get_media_list(
+def get_media_complete_data(
+    
     ig_user_id: str,
+    
     access_token: str,
     since: int,
     until: int,
     client_name: str,
-    extra_fields: Optional[List[str]] = None
 ) -> List[Dict[str, Any]]:
+    
+    print(f"[DEBUG] Input parameters:")
+    print(f"  ig_user_id: {ig_user_id}")
+    print(f"  access_token: {'<hidden>'}")  # non stampare il token reale per sicurezza
+    print(f"  since (timestamp): {since}")
+    print(f"  until (timestamp): {until}")
+    print(f"  client_name: {client_name}")
 
-    base_url = f"https://graph.facebook.com/v18.0/{ig_user_id}/media"
-    base_fields = [
-        "id", "caption", "media_type", "media_url", "permalink", "timestamp", "children", "duration"
-    ]
-    if extra_fields:
-        fields = list(set(base_fields + extra_fields))
-    else:
-        fields = base_fields
+    """
+    Flusso completo:
+    1) Recupera lista media (id + media_type)
+    2) Per ogni media, chiama API dati dettagliati + insights a seconda del tipo
+    3) Aggrega dati per caroselli
+    4) Salva JSON raw
+    """
 
-    params = {
-        "fields": ",".join(fields),
+    # 1. Recupera lista media con id e media_type
+    media_list_url = f"https://graph.facebook.com/v23.0/{ig_user_id}/media"
+    media_list_params = {
+        "fields": "id,media_type",
         "since": since,
         "until": until,
         "access_token": access_token
-    }
+}
 
     all_media = []
-    next_url = base_url
+    next_url = media_list_url
     processed = 0
 
-    logger.info(f"Avvio recupero media per IG user {ig_user_id}")
-
-    since_dt = parse_date(since)
-    until_dt = parse_date(until)
+    logger.info(f"Recupero lista media ID + tipo per IG user {ig_user_id}")
 
     while next_url:
-        data = api_get(next_url, params=params if next_url == base_url else {})
+        data = api_get(next_url, params=media_list_params if next_url == media_list_url else {})
         if "error" in data:
-            logger.error(f"Errore API: {data['error']}")
+            logger.error(f"Errore API recupero lista media: {data['error']}")
             return []
 
         items = data.get("data", [])
-
         logger.info(f"Recuperata pagina con {len(items)} media.")
 
         for item in items:
+            media_id = item.get("id")
+            media_type = item.get("media_type")
+
             try:
-                timestamp = item.get("timestamp")
-                ts_obj = parse_date(timestamp)
+                logger.info(f"Processo media ID {media_id} di tipo {media_type}")
 
-                if not (since_dt <= ts_obj <= until_dt):
-                    continue
+                # 2. Dati dettagliati e insights a seconda del tipo
+                if media_type == "CAROUSEL_ALBUM":
+                    # Dati dettagliati carosello
+                    fields = "id,media_type,caption,like_count,comments_count,timestamp,children{id,media_type,media_url,thumbnail_url,timestamp,permalink}"
+                    details_resp = api_get(
+                        f"https://graph.facebook.com/v23.0/{media_id}",
+                        params={"fields": fields, "access_token": access_token}
+                    )
 
-                media_type = item.get("media_type", "")
-                if media_type == "STORY":
-                    # Gestisci diversamente, ad es. salta metriche o logga e continua
-                    logger.info(f"Media ID {item.get('id')} è STORY, salto recupero metriche.")
-                    continue
+                    if "error" in details_resp:
+                        logger.error(f"Errore API dettagli carosello {media_id}: {details_resp['error']}")
+                        continue
 
-                if media_type == "CAROUSEL_ALBUM" and "children" in item:
-                    children_data = item["children"].get("data", [])
-                    aggregated_metrics = {
-                        "impressions": 0,
-                        "reach": 0,
-                        "saved": 0,
-                        "video_views": 0,
-                        "shares": 0,
-                        "total_interactions": 0,
-                        "engagement": 0
-                    }
-                    for child in children_data:
-                        child_id = child.get("id")
-                        logger.debug(f"Recupero child media {child_id} di carosello")
-                        success = False
-                        max_retries = 3
-                        for attempt in range(1, max_retries + 1):
-                            child_resp = api_get(
-                                f"https://graph.facebook.com/v18.0/{child_id}",
-                                params={"fields": "media_url,media_type,timestamp,permalink,caption,duration,like_count,comments_count", "access_token": access_token}
-                            )
-                            if "error" not in child_resp:
-                                child_data = child_resp
-                                media_entry = {
-                                    "media_id": child_data.get("id", child_id),
-                                    "caption": child_data.get("caption", ""),
-                                    "media_type": child_data.get("media_type", "IMAGE"),
-                                    "media_url": child_data.get("media_url"),
-                                    "permalink": child_data.get("permalink"),
-                                    "timestamp": child_data.get("timestamp", timestamp),
-                                    "duration": child_data.get("duration"),
-                                    "children": [],
-                                    "like_count": child_data.get("like_count", 0),
-                                    "comments_count": child_data.get("comments_count", 0),
-                                }
+                    # Insights carosello
+                    metrics_list = "comments,follows,likes,profile_activity,profile_visits,reach,saved,shares,total_interactions"
+                    insights_resp = api_get(
+                        f"https://graph.facebook.com/v23.0/{media_id}/insights",
+                        params={"metric": metrics_list, "access_token": access_token}
+                    )
 
-                                logger.info(f"Avvio recupero metriche per media ID {media_entry['media_id']}")
-                                metrics = get_insights_with_fallback(media_entry['media_id'], access_token)
+                    if "error" in insights_resp:
+                        logger.error(f"Errore API insights carosello {media_id}: {insights_resp['error']}")
+                        insights_data = {}
+                    else:
+                        insights_data = parse_insights_data(insights_resp)
 
-                                engagement = (
-                                    media_entry.get("like_count", 0) +
-                                    media_entry.get("comments_count", 0) +
-                                    metrics.get("saved", 0)
-                                )
-                                media_entry.update({
-                                    "impressions": metrics.get("impressions", 0),
-                                    "reach": metrics.get("reach", 0),
-                                    "saved": metrics.get("saved", 0),
-                                    "video_views": metrics.get("video_views", 0),
-                                    "shares": metrics.get("shares", 0),
-                                    "total_interactions": metrics.get("total_interactions", 0),
-                                    "engagement": engagement,
-                                })
-                                logger.info(f"Metriche recuperate con successo per media ID {media_entry['media_id']}")
+                    # Aggrega dati figli
+                    children = details_resp.get("children", {}).get("data", [])
+                    children_data = []
+                    for child in children:
+                        # Per ogni child prendi i campi già presenti
+                        children_data.append({
+                            "id": child.get("id"),
+                            "media_type": child.get("media_type"),
+                            "media_url": child.get("media_url"),
+                            "thumbnail_url": child.get("thumbnail_url"),
+                            "timestamp": child.get("timestamp"),
+                            "permalink": child.get("permalink"),
+                        })
 
-                                # Accumula metriche per aggregazione carosello
-                                for key in aggregated_metrics.keys():
-                                    aggregated_metrics[key] += media_entry.get(key, 0)
-
-                                all_media.append(media_entry)
-                                processed += 1
-                                logger.info(f"Media aggiunto: {media_entry['media_id']}")
-                                if processed % 25 == 0:
-                                    logger.info(f"Trovati {processed} media…")
-                                success = True
-                                break
-                            else:
-                                logger.warning(f"Retry {attempt} per child media {child_id}: {child_resp['error']}")
-                                if attempt < max_retries:
-                                    time.sleep(2)
-                        if not success:
-                            logger.error(f"Impossibile recuperare child media {child_id} dopo {max_retries} tentativi")
-
-                    # Aggiungi anche un entry aggregata per il carosello se vuoi,
-                    # ad es. con id dell’album e metriche sommate
-                    album_entry = {
-                        "media_id": item.get("id"),
-                        "caption": item.get("caption", ""),
+                    media_entry = {
+                        "media_id": media_id,
                         "media_type": media_type,
-                        "media_url": item.get("media_url"),
-                        "permalink": item.get("permalink"),
-                        "timestamp": timestamp,
-                        "duration": item.get("duration"),
-                        "children": [],  # opzionale, puoi anche lasciare vuoto o lista dei figli
+                        "caption": details_resp.get("caption", ""),
+                        "like_count": details_resp.get("like_count", 0),
+                        "comments_count": details_resp.get("comments_count", 0),
+                        "timestamp": details_resp.get("timestamp"),
+                        "children": children_data,
+                        **insights_data
                     }
-                    album_entry.update(aggregated_metrics)
-                    all_media.append(album_entry)
+
+                elif media_type == "IMAGE":
+                    # Dati dettagliati foto
+                    fields = "id,media_type,media_url,timestamp,caption,like_count,comments_count,permalink"
+                    details_resp = api_get(
+                        f"https://graph.facebook.com/v23.0/{media_id}",
+                        params={"fields": fields, "access_token": access_token}
+                    )
+                    if "error" in details_resp:
+                        logger.error(f"Errore API dettagli foto {media_id}: {details_resp['error']}")
+                        continue
+
+                    # Insights foto
+                    metrics_list = "comments,follows,likes,profile_activity,profile_visits,reach,saved,shares,total_interactions"
+                    insights_resp = api_get(
+                        f"https://graph.facebook.com/v23.0/{media_id}/insights",
+                        params={"metric": metrics_list, "access_token": access_token}
+                    )
+
+                    if "error" in insights_resp:
+                        logger.error(f"Errore API insights foto {media_id}: {insights_resp['error']}")
+                        insights_data = {}
+                    else:
+                        insights_data = parse_insights_data(insights_resp)
+
+                    media_entry = {
+                        "media_id": media_id,
+                        "media_type": media_type,
+                        "media_url": details_resp.get("media_url"),
+                        "caption": details_resp.get("caption", ""),
+                        "like_count": details_resp.get("like_count", 0),
+                        "comments_count": details_resp.get("comments_count", 0),
+                        "timestamp": details_resp.get("timestamp"),
+                        "permalink": details_resp.get("permalink"),
+                        **insights_data
+                    }
+
+                elif media_type in ("VIDEO", "REEL"):
+                    # Dati dettagliati video/reel
+                    fields = ("id,media_type,media_url,thumbnail_url,timestamp,caption,"
+                              "like_count,comments_count,permalink,comments{from,like_count,media,text}")
+                    details_resp = api_get(
+                        f"https://graph.facebook.com/v23.0/{media_id}",
+                        params={"fields": fields, "access_token": access_token}
+                    )
+                    if "error" in details_resp:
+                        logger.error(f"Errore API dettagli video/reel {media_id}: {details_resp['error']}")
+                        continue
+
+                    # Insights video/reel
+                    metrics_list = ("comments,likes,reach,saved,shares,total_interactions,views,"
+                                    "ig_reels_avg_watch_time,ig_reels_video_view_total_time")
+                    insights_resp = api_get(
+                        f"https://graph.facebook.com/v23.0/{media_id}/insights",
+                        params={"metric": metrics_list, "access_token": access_token}
+                    )
+
+                    if "error" in insights_resp:
+                        logger.error(f"Errore API insights video/reel {media_id}: {insights_resp['error']}")
+                        insights_data = {}
+                    else:
+                        insights_data = parse_insights_data(insights_resp)
+
+                    media_entry = {
+                        "media_id": media_id,
+                        "media_type": media_type,
+                        "media_url": details_resp.get("media_url"),
+                        "thumbnail_url": details_resp.get("thumbnail_url"),
+                        "caption": details_resp.get("caption", ""),
+                        "like_count": details_resp.get("like_count", 0),
+                        "comments_count": details_resp.get("comments_count", 0),
+                        "timestamp": details_resp.get("timestamp"),
+                        "permalink": details_resp.get("permalink"),
+                        "comments": details_resp.get("comments", []),
+                        **insights_data
+                    }
 
                 else:
-                    # media singolo (non carosello, non story)
-                    media_entry = {
-                        "media_id": item.get("id"),
-                        "caption": item.get("caption", ""),
-                        "media_type": media_type,
-                        "media_url": item.get("media_url"),
-                        "permalink": item.get("permalink"),
-                        "timestamp": timestamp,
-                        "duration": item.get("duration"),
-                        "children": [],
-                        "like_count": item.get("like_count", 0),
-                        "comments_count": item.get("comments_count", 0),
-                    }
+                    logger.warning(f"Tipo media sconosciuto o non gestito: {media_type} per media {media_id}")
+                    continue
 
-                    logger.info(f"Avvio recupero metriche per media ID {media_entry['media_id']}")
-                    metrics = get_insights_with_fallback(media_entry['media_id'], access_token)
+                all_media.append(media_entry)
+                processed += 1
+                logger.info(f"Media processato e aggiunto: {media_id} ({media_type})")
+                if processed % 25 == 0:
+                    logger.info(f"{processed} media processati...")
 
-                    engagement = (
-                        media_entry.get("like_count", 0) +
-                        media_entry.get("comments_count", 0) +
-                        metrics.get("saved", 0)
-                    )
-                    media_entry.update({
-                        "impressions": metrics.get("impressions", 0),
-                        "reach": metrics.get("reach", 0),
-                        "saved": metrics.get("saved", 0),
-                        "video_views": metrics.get("video_views", 0),
-                        "shares": metrics.get("shares", 0),
-                        "total_interactions": metrics.get("total_interactions", 0),
-                        "engagement": engagement,
-                    })
-                    logger.info(f"Metriche recuperate con successo per media ID {media_entry['media_id']}")
-
-                    all_media.append(media_entry)
-                    processed += 1
-                    logger.info(f"Media aggiunto: {media_entry['media_id']}")
-                    if processed % 25 == 0:
-                        logger.info(f"Trovati {processed} media…")
             except Exception as e:
-                media_id = item.get("id", "unknown")
-                logger.exception(f"Errore nel parsing di media_id {media_id}: {e}")
+                logger.exception(f"Errore processing media {media_id}: {e}")
 
         next_url = data.get("paging", {}).get("next")
-        params = {}
+        media_list_params = {}
 
-    logger.info(f"Totale media raccolti: {len(all_media)}")
-    # Converti i timestamp in stringhe data per il salvataggio JSON
+    logger.info(f"Totale media processati: {len(all_media)}")
+    if len(all_media) > 0:
+        logger.info(f"[DEBUG] Esempio primo media processato:\n{all_media[0]}")
+    else:
+        logger.info("[DEBUG] Nessun media processato.")
+
+    # Salvataggio JSON raw completo
     since_str = datetime.utcfromtimestamp(since).strftime("%Y-%m-%d")
     until_str = datetime.utcfromtimestamp(until).strftime("%Y-%m-%d")
-
-    # Salva JSON raw dei media
     save_media_as_json(all_media, client_name, since_str, until_str)
     logger.info(f"File JSON raw_media salvato per {client_name} da {since_str} a {until_str}")
+    
 
     return all_media
 
+
 @log_exceptions
 def run(client_name: str, since_unix: int, until_unix: int) -> List[Dict[str, Any]]:
+    print(f"[DEBUG] run() chiamato con parametri:")
+    print(f"  client_name: {client_name}")
+    print(f"  since_unix: {since_unix}")
+    print(f"  until_unix: {until_unix}")
+
     logger.info(f"Step 3 avviato per {client_name}")
 
     token = load_token()
@@ -299,8 +316,10 @@ def run(client_name: str, since_unix: int, until_unix: int) -> List[Dict[str, An
         logger.error(f"Impossibile trovare token o ig_user_id per cliente {client_name}")
         return []
 
-    media_list = get_media_list(ig_user_id, token, since_unix, until_unix, client_name)
+    media_list = get_media_complete_data(ig_user_id, token, since_unix, until_unix, client_name)
     logger.info(f"Step 3 completato: {len(media_list)} media recuperati.")
+    logger.info(f"[DEBUG] Numero media recuperati da get_media_complete_data: {len(media_list)}")
+
     return media_list
 
 if __name__ == "__main__":

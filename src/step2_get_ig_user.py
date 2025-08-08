@@ -21,27 +21,54 @@ def get_instagram_user_id(page_id: str, access_token: str) -> str:
         data = response.json()
 
         if "connected_instagram_account" in data:
-            ig_id = data["connected_instagram_account"]["id"]
-            print(f"[✅] IG User ID per Page {page_id}: {ig_id}")
-            return ig_id
+            ig_account = data["connected_instagram_account"]
+            if ig_account is not None and "id" in ig_account:
+                ig_id = ig_account["id"]
+                logger.info(f"[✅] IG User ID per Page {page_id}: {ig_id}")
+                return ig_id
+            else:
+                logger.warning(f"[⚠️] Collegamento Instagram presente ma ID mancante per pagina {page_id}")
+                return None
         else:
-            print(f"[⚠️] Nessun account Instagram collegato alla pagina {page_id}")
+            logger.warning(f"[⚠️] Nessun account Instagram collegato alla pagina {page_id}")
             return None
 
     except requests.exceptions.HTTPError as e:
-        print(f"[❌] Errore HTTP durante il recupero di IG User ID per Page {page_id}: {e}")
-        print(f"[ℹ️] Risposta: {response.text}")
+        logger.error(f"[❌] Errore HTTP durante il recupero di IG User ID per Page {page_id}: {e}")
+        logger.error(f"[ℹ️] Risposta: {response.text}")
         return None
     except Exception as e:
-        print(f"[❌] Errore generico durante il recupero di IG User ID per Page {page_id}: {e}")
+        logger.error(f"[❌] Errore generico durante il recupero di IG User ID per Page {page_id}: {e}")
         return None
 
 import sys
 
 def run(client_name, since, until):
-    # Qui inserisci la logica attuale per recuperare IG User ID
-    print(f"Step 2 - Recupero IG User ID per cliente {client_name} da {since} a {until}")
-    # TODO: sostituisci con il codice reale di chiamata API e gestione dati
+    from utils.token_utils import load_token
+    from utils.client_utils import load_client_data, save_client_data
+
+    logger.info(f"Step 2 - Recupero IG User ID per cliente {client_name} da {since} a {until}")
+
+    access_token = load_token()
+    if not access_token:
+        logger.error("Access token non disponibile o non caricato correttamente.")
+        return
+
+    client_data = load_client_data(client_name)
+    if not client_data:
+        logger.error(f"Nessun dato Page ID trovato per il cliente '{client_name}'.")
+        return
+
+    for page_id in client_data.keys():
+        logger.info(f"Recupero IG User ID per Facebook Page ID: {page_id}")
+        ig_user_id = get_instagram_user_id(page_id, access_token)
+
+        if ig_user_id:
+            logger.info(f"Salvataggio IG User ID per cliente '{client_name}', pagina {page_id}")
+            save_client_data(client_name, page_id, ig_user_id)
+        else:
+            logger.warning(f"Impossibile recuperare IG User ID per pagina {page_id}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:

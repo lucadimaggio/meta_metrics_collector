@@ -3,20 +3,34 @@ import json
 import csv
 import logging
 from typing import List, Dict, Any
+from typing import Optional
+
 
 logger = logging.getLogger(__name__)
 
 
-def save_media_as_json(all_media: List[Dict[str, Any]], client_name: str, since: str, until: str) -> None:
+def save_media_as_json(
+    all_media: List[Dict[str, Any]],
+    client_name: str,
+    since: str,
+    until: str,
+    output_path: str = None
+) -> None:
     """
     Salva la lista completa dei media in formato JSON.
+    Se output_path è fornito, salva lì il file JSON, altrimenti salva in media/{client_name}.
     """
     try:
         logger.info(f"Salvataggio JSON media avviato per {client_name} dal {since} al {until}")
-        folder_path = os.path.join("media", client_name)
-        os.makedirs(folder_path, exist_ok=True)
 
-        file_path = os.path.join(folder_path, f"raw_media_{since}_{until}.json")
+        if output_path is None:
+            folder_path = os.path.join("media", client_name)
+            os.makedirs(folder_path, exist_ok=True)
+            file_path = os.path.join(folder_path, f"raw_media_{since}_{until}.json")
+        else:
+            folder_path = os.path.dirname(output_path)
+            os.makedirs(folder_path, exist_ok=True)
+            file_path = output_path
 
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(all_media, f, ensure_ascii=False, indent=2)
@@ -25,6 +39,7 @@ def save_media_as_json(all_media: List[Dict[str, Any]], client_name: str, since:
 
     except Exception as e:
         logger.error(f"Errore durante il salvataggio JSON per {client_name}: {e}")
+
 
 
 def save_media_as_csv(
@@ -44,16 +59,16 @@ def save_media_as_csv(
         if output_path is None:
             folder_path = os.path.join("media", client_name)
             os.makedirs(folder_path, exist_ok=True)
-            file_path = os.path.join(folder_path, f"media_report_{since}_{until}.csv")
+            file_path = os.path.join(folder_path, f"content_report_{since}_{until}.csv")
         else:
             folder_path = os.path.dirname(output_path)
             os.makedirs(folder_path, exist_ok=True)
             file_path = output_path
 
         headers = [
-            "id", "media_type", "caption", "timestamp", "permalink", "media_url", "children",
+            "media_id", "media_type", "caption", "timestamp", "permalink", "media_url", "children",
             "impressions", "reach", "saved", "video_views", "like_count", "comments_count", "engagement_rate"
-        ]
+]
 
         with open(file_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=headers)
@@ -75,7 +90,7 @@ def save_media_as_csv(
                         children_ids = ""
 
                     row = {
-                        "id": m.get("id", ""),
+                        "media_id": m.get("media_id", ""),
                         "media_type": m.get("media_type", ""),
                         "caption": m.get("caption", ""),
                         "timestamp": m.get("timestamp", ""),
@@ -89,7 +104,8 @@ def save_media_as_csv(
                         "like_count": m.get("like_count", ""),
                         "comments_count": m.get("comments_count", ""),
                         "engagement_rate": m.get("engagement_rate", "")
-                    }
+}
+
 
                     writer.writerow(row)
 

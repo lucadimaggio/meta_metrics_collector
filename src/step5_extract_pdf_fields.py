@@ -39,7 +39,7 @@ def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
         for row in reader:
             try:
                 post = {
-                    "id": row.get("id", ""),
+                    "media_id": row.get("media_id", ""),
                     "timestamp": row.get("timestamp", ""),
                     "permalink": row.get("permalink", ""),
                     "quality_score": safe_float(row.get("quality_score", 0)),
@@ -101,7 +101,7 @@ def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
         logger.info(f"Assigning local_img_path for post {idx}: {image_local_path}")
 
         post_data = {
-            "id": post["id"],
+            "media_id": post["media_id"],
             "timestamp": date_formatted,
             "permalink": post["permalink"],
             "media_type": post["media_type"],

@@ -66,7 +66,7 @@ def main(client_name, since, until, access_token):
         if not media_url:
             reason = "Nessun media_url presente"
             logger.warning(f"{reason} per post {filename_base}, saltato.")
-            failed.append({"id": filename_base, "reason": reason})
+            failed.append({"media_id": filename_base, "reason": reason})
             post["download_status"] = f"failed: {reason}"
             continue
 
@@ -77,13 +77,13 @@ def main(client_name, since, until, access_token):
             success = download_file(media_url, local_img_path)
 
         elif media_type == "CAROUSEL_ALBUM":
-            first_img_url = get_carousel_first_image(post.get("id"), access_token)
+            first_img_url = get_carousel_first_image(post.get("media_id"), access_token)
             if first_img_url:
                 success = download_file(first_img_url, local_img_path)
             else:
                 reason = "Carosello senza immagine valida"
                 logger.warning(f"{reason} per post {filename_base}")
-                failed.append({"id": filename_base, "reason": reason})
+                failed.append({"media_id": filename_base, "reason": reason})
                 post["download_status"] = f"failed: {reason}"
                 continue
 
@@ -99,7 +99,7 @@ def main(client_name, since, until, access_token):
         else:
             reason = f"Tipo media sconosciuto {media_type}"
             logger.warning(reason)
-            failed.append({"id": filename_base, "reason": reason})
+            failed.append({"media_id": filename_base, "reason": reason})
             post["download_status"] = f"failed: {reason}"
             continue
 
@@ -111,7 +111,7 @@ def main(client_name, since, until, access_token):
             post["download_status"] = "ok"
             logger.info(f"Updated local_img_path for post {filename_base}: from {old_path} to {new_path}")
         else:
-            failed.append({"id": filename_base, "reason": "Download fallito"})
+            failed.append({"media_id": filename_base, "reason": "Download fallito"})
             post["download_status"] = "failed: Download fallito"
             logger.info(f"Download fallito per post {filename_base}")
 

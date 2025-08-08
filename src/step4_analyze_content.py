@@ -49,17 +49,17 @@ def analyze_media(media: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         engagement_rate = None
         try:
             if (like_count is None or comments_count is None or saved is None or impressions is None):
-                logger.warning(f"Metriche social mancanti per media ID {m.get('id', 'unknown')}")
+                logger.warning(f"Metriche social mancanti per media ID {m.get('media_id', 'unknown')}")
             elif impressions == 0:
-                logger.warning(f"Impressions pari a zero per media ID {m.get('id', 'unknown')}, impossibile calcolare engagement.")
+                logger.warning(f"Impressions pari a zero per media ID {m.get('media_id', 'unknown')}, impossibile calcolare engagement.")
             else:
                 engagement_rate = (like_count + comments_count + saved) / impressions
-                logger.debug(f"Calcolato engagement rate {engagement_rate:.4f} per media ID {m.get('id', 'unknown')}")
+                logger.debug(f"Calcolato engagement rate {engagement_rate:.4f} per media ID {m.get('media_id', 'unknown')}")
         except Exception as e:
-            logger.warning(f"Errore calcolo engagement per media ID {m.get('id', 'unknown')}: {e}")
+            logger.warning(f"Errore calcolo engagement per media ID {m.get('media_id', 'unknown')}: {e}")
 
         result = {
-            "id": m.get("id"),
+            "media_id": m.get("media_id"),
             "caption": caption,
             "media_type": m.get("media_type", "unknown"),
             "media_url": m.get("media_url", ""),
@@ -188,14 +188,14 @@ def calculate_average_reel_duration(media_list: List[Dict[str, Any]]) -> Dict[st
         if media_type in ("REEL", "VIDEO"):
             duration = media.get("duration")
             if duration is None:
-                logger.warning(f"Durata mancante per media ID {media.get('id', 'unknown')}")
+                logger.warning(f"Durata mancante per media ID {media.get('media_id', 'unknown')}")
                 continue
             try:
                 dur_sec = float(duration)
                 durations.append(dur_sec)
                 count += 1
             except Exception as e:
-                logger.warning(f"Errore nel parsing durata per media ID {media.get('id', 'unknown')}: {e}")
+                logger.warning(f"Errore nel parsing durata per media ID {media.get('media_id', 'unknown')}: {e}")
     average = sum(durations) / count if count > 0 else 0.0
     logger.info(f"Calcolata durata media su {count} contenuti: {average:.2f} secondi.")
     return {
@@ -220,10 +220,15 @@ def integrated_analysis(media_list: List[Dict[str, Any]], since: str, until: str
         logger.info(f"Statistiche durata media reel/video: {duration_stats}")
         results['duration_stats'] = duration_stats
 
-        save_media_as_json(results, client_name, since, until)
+        save_media_as_json(results, client_name, since, until, output_path=f"media/{client_name}/analysis_results_{since}_{until}.json")
+
         logger.info("Salvataggio file JSON completato.")
 
         analyzed_media = analyze_media(media_list)
+
+        # Stampare a console l'input della funzione (media_list)
+        print(f"\n[DEBUG] Input media_list (prima dell'analisi dettagliata):\n{json.dumps(media_list, indent=2, ensure_ascii=False)}\n")
+
         # Modifica: salva CSV nella cartella output/{client_name} con nome content_report_{since}_{until}.csv
         folder_path = os.path.join(OUTPUT_DIR, client_name)
         os.makedirs(folder_path, exist_ok=True)
@@ -231,8 +236,13 @@ def integrated_analysis(media_list: List[Dict[str, Any]], since: str, until: str
         save_media_as_csv(analyzed_media, client_name, since, until, output_path=output_csv_path)
         logger.info(f"Salvataggio file CSV completato in {output_csv_path}.")
 
-
-
+        # Stampare a console l'output CSV appena salvato
+        try:
+            with open(output_csv_path, "r", encoding="utf-8") as csvfile:
+                csv_content = csvfile.read()
+            print(f"\n[DEBUG] Contenuto del CSV salvato ({output_csv_path}):\n{csv_content}\n")
+        except Exception as e:
+            print(f"[ERROR] Impossibile leggere il CSV salvato: {e}")
 
         report_text = (
             f"Report Analisi integrate per {client_name} da {since} a {until}:\n\n"
@@ -263,6 +273,10 @@ def run_analysis(client_name: str, since: str, until: str) -> None:
 
     with open(file_path, "r", encoding="utf-8") as f:
         media = json.load(f)
+
+    # Salvataggio raw media_list come JSON in media/{client_name}/
+    save_media_as_json(media, client_name, since, until)
+    logger.info(f"Salvato JSON raw media in media/{client_name}/raw_media_{since}_{until}.json")
 
     if not media:
         logger.warning(f"Nessun contenuto da analizzare per {client_name}.")

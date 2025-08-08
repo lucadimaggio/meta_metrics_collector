@@ -123,7 +123,7 @@ if __name__ == "__main__":
             logger.warning(f"[⏭] Skip: nessun IG User ID per {page_id}")
             continue
 
-        media = step3_get_media.get_media_list(
+        media = step3_get_media.get_media_complete_data(
             ig_user_id,
             config["access_token"],
             config["since_unix"],
