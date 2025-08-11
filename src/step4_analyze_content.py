@@ -8,7 +8,7 @@ from collections import Counter
 import csv
 import logging
 
-from utils.save_utils import save_media_as_json, save_media_as_csv, save_text_report
+from utils.save_utils import save_media_as_json, save_text_report
 
 logger = logging.getLogger(__name__)
 
@@ -44,19 +44,9 @@ def analyze_media(media: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         like_count = m.get("like_count")
         comments_count = m.get("comments_count")
         saved = m.get("saved")
-        impressions = m.get("impressions")
+        total_interactions = m.get("total_interactions")
 
-        engagement_rate = None
-        try:
-            if (like_count is None or comments_count is None or saved is None or impressions is None):
-                logger.warning(f"Metriche social mancanti per media ID {m.get('media_id', 'unknown')}")
-            elif impressions == 0:
-                logger.warning(f"Impressions pari a zero per media ID {m.get('media_id', 'unknown')}, impossibile calcolare engagement.")
-            else:
-                engagement_rate = (like_count + comments_count + saved) / impressions
-                logger.debug(f"Calcolato engagement rate {engagement_rate:.4f} per media ID {m.get('media_id', 'unknown')}")
-        except Exception as e:
-            logger.warning(f"Errore calcolo engagement per media ID {m.get('media_id', 'unknown')}: {e}")
+
 
         result = {
             "media_id": m.get("media_id"),
@@ -72,8 +62,7 @@ def analyze_media(media: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "like_count": like_count,
             "comments_count": comments_count,
             "saved": saved,
-            "impressions": impressions,
-            "engagement_rate": engagement_rate,
+            "total_interactions": total_interactions,
         }
 
         score = 0
@@ -229,20 +218,7 @@ def integrated_analysis(media_list: List[Dict[str, Any]], since: str, until: str
         # Stampare a console l'input della funzione (media_list)
         print(f"\n[DEBUG] Input media_list (prima dell'analisi dettagliata):\n{json.dumps(media_list, indent=2, ensure_ascii=False)}\n")
 
-        # Modifica: salva CSV nella cartella output/{client_name} con nome content_report_{since}_{until}.csv
-        folder_path = os.path.join(OUTPUT_DIR, client_name)
-        os.makedirs(folder_path, exist_ok=True)
-        output_csv_path = os.path.join(folder_path, f"content_report_{since}_{until}.csv")
-        save_media_as_csv(analyzed_media, client_name, since, until, output_path=output_csv_path)
-        logger.info(f"Salvataggio file CSV completato in {output_csv_path}.")
-
-        # Stampare a console l'output CSV appena salvato
-        try:
-            with open(output_csv_path, "r", encoding="utf-8") as csvfile:
-                csv_content = csvfile.read()
-            print(f"\n[DEBUG] Contenuto del CSV salvato ({output_csv_path}):\n{csv_content}\n")
-        except Exception as e:
-            print(f"[ERROR] Impossibile leggere il CSV salvato: {e}")
+        
 
         report_text = (
             f"Report Analisi integrate per {client_name} da {since} a {until}:\n\n"
@@ -264,6 +240,9 @@ def integrated_analysis(media_list: List[Dict[str, Any]], since: str, until: str
         return {}
 
 def run_analysis(client_name: str, since: str, until: str) -> None:
+
+    
+
     logger.info(f"Inizio run_analysis per cliente {client_name} da {since} a {until}.")
     file_path = os.path.join(MEDIA_DIR, client_name, f"raw_media_{since}_{until}.json")
     if not os.path.exists(file_path):

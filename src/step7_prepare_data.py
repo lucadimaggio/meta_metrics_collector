@@ -29,7 +29,7 @@ def prepare_data(client_name, since, until):
         logger.error("Nessun top post trovato nel JSON o formato errato (lista attesa).")
         return False
 
-    download_paths = [post.get("local_img_path") for post in top_posts if post.get("local_img_path")]
+    download_paths = [post.get("media_url") for post in top_posts if post.get("media_url")]
     if not download_paths:
         logger.warning("Nessun media da scaricare.")
         return False

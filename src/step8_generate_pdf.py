@@ -111,18 +111,27 @@ def generate_pdf(client_name, since, until):
             else:
                 formatted_date = ""
 
+            media_type = post.get("media_type", "").lower()
+
             metrics_lines = [
                 f"Data: {formatted_date}",
                 f"Score: {post.get('quality_score', '')}",
-                f"Impressions: {post.get('impressions', 'N/A')}",
+                f"Shares: {post.get('shares', 'N/A')}",
                 f"Reach: {post.get('reach', 'N/A')}",
                 f"Saved: {post.get('saved', 'N/A')}",
-                f"Video views: {post.get('video_views', 'N/A')}",
+            ]
+
+            if media_type != "image":
+                metrics_lines.append(f"Video views: {post.get('video_views', 'N/A')}")
+
+            metrics_lines.extend([
                 f"Like count: {post.get('like_count', 'N/A')}",
                 f"Comments count: {post.get('comments_count', 'N/A')}",
-                f"Engagement rate: {post.get('engagement_rate', 'N/A')}",
+                f"Total interactions: {post.get('total_interactions', 'N/A')}",
                 "Link al post"
-            ]
+            ])
+
+            
 
             total_text_height = len(metrics_lines) * pos_metrics["line_height"]
             y_center = pos_metrics["y"] + pos_metrics["height"] / 2

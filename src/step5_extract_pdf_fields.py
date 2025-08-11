@@ -23,44 +23,53 @@ def safe_float(val):
 
 @log_exceptions
 def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
-    input_csv_path = os.path.join("output", client_name, f"content_report_{since}_{until}.csv")
+    input_json_path = os.path.join("media", client_name, f"raw_media_{since}_{until}.json")
     output_json_path = os.path.join("output", client_name, f"pdf_fields_{since}_{until}_with_images.json")
 
-    logger.info(f"Verifico esistenza file CSV: {input_csv_path}")
-    if not os.path.exists(input_csv_path):
-        logger.error(f"File CSV non trovato: {input_csv_path}")
-        logger.error("Assicurati che il file CSV venga generato correttamente dopo lo step 4 (analisi contenuti).")
+    logger.info(f"Verifico esistenza file JSON raw_media: {input_json_path}")
+    if not os.path.exists(input_json_path):
+        logger.error(f"File JSON raw_media non trovato: {input_json_path}")
+        logger.error("Assicurati che il file JSON raw_media venga generato correttamente dallo step precedente.")
         return
 
-    with open(input_csv_path, newline='', encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
+    with open(input_json_path, 'r', encoding="utf-8") as jsonfile:
+        try:
+            raw_data = json.load(jsonfile)
+            entry_by_media_id = {e.get("media_id"): e for e in raw_data}
 
-        posts = []
-        for row in reader:
-            try:
-                post = {
-                    "media_id": row.get("media_id", ""),
-                    "timestamp": row.get("timestamp", ""),
-                    "permalink": row.get("permalink", ""),
-                    "quality_score": safe_float(row.get("quality_score", 0)),
-                    "media_type": row.get("media_type", ""),
-                    "media_url": row.get("media_url", ""),
-                    "caption": row.get("caption", ""),
-                    "impressions": safe_int(row.get("impressions", 0)),
-                    "reach": safe_int(row.get("reach", 0)),
-                    "saved": safe_int(row.get("saved", 0)),
-                    "video_views": safe_int(row.get("video_views", 0)),
-                    "like_count": safe_int(row.get("like_count", 0)),
-                    "comments_count": safe_int(row.get("comments_count", 0)),
-                    "engagement_rate": safe_float(row.get("engagement_rate", 0.0)),
-                }
-                posts.append(post)
-            except Exception as e:
-                logger.warning(f"Errore creando post da riga CSV: {e}")
+            logger.info(f"Caricati {len(raw_data)} post dal file JSON raw_media")
+        except Exception as e:
+            logger.error(f"Errore nel parsing del file JSON: {e}")
+            return
+
+    posts = []
+    for entry in raw_data:
+        try:
+            post = {
+                "media_id": entry.get("media_id", ""),
+                "timestamp": entry.get("timestamp", ""),
+                "permalink": entry.get("permalink", ""),
+                "quality_score": safe_float(entry.get("quality_score", 0)),
+                "media_type": entry.get("media_type", ""),
+                "media_url": entry.get("media_url", ""),
+                "caption": entry.get("caption", ""),
+                "reach": safe_int(entry.get("reach", 0)),
+                "saved": safe_int(entry.get("saved", 0)),
+                "views": safe_int(entry.get("views", 0)),
+                "like_count": safe_int(entry.get("like_count", 0)),
+                "comments_count": safe_int(entry.get("comments_count", 0)),
+                "total_interactions": safe_float(entry.get("total_interactions", 0.0)),
+            }
+            logger.info(f"[RAW INPUT] Post media_id={post['media_id']}: {post}")
+            posts.append(post)
+        except Exception as e:
+            logger.warning(f"Errore creando post da JSON raw_media: {e}")
+
 
 
     if not posts:
-        logger.warning("Nessun post valido trovato nel CSV.")
+        logger.warning("Nessun post valido trovato nel file JSON raw_media.")
+
         return
 
     # Mostra campi individuati per conferma
@@ -91,34 +100,62 @@ def extract_top_posts(client_name: str, since: str, until: str, top_n: int = 3):
     # Prepara dati per JSON
     top_posts_data = []
     for idx, post in enumerate(top_posts, 1):
+        entry = entry_by_media_id.get(post["media_id"], {})
+
         try:
             date_formatted = datetime.fromisoformat(post['timestamp']).strftime('%Y-%m-%d')
         except ValueError:
-            logger.warning(f"Timestamp non valido per post ID {post['id']}: {post['timestamp']}, uso valore originale.")
+            logger.warning(f"Timestamp non valido per post media_id {post['media_id']}: {post['timestamp']}, uso valore originale.")
             date_formatted = post['timestamp']
 
         image_local_path = os.path.join("media", client_name, f"post_{idx}.jpg")
         logger.info(f"Assigning local_img_path for post {idx}: {image_local_path}")
+
+        media_url = post["media_url"]  # default preso dal post
+
+        if post["media_type"] == "CAROUSEL_ALBUM":
+            children = entry.get("children", [])
+            logger.info(f"Post {idx} è un carosello con {len(children)} children, cerco primo media_url valido...")
+            first_media_url = None
+            for child in children:
+                url = child.get("media_url")
+                if url:
+                    first_media_url = url
+                    break
+            if first_media_url:
+                logger.info(f"Post {idx} - Primo media_url valido dal carosello trovato: {first_media_url}")
+                media_url = first_media_url
+            else:
+                logger.info(f"Post {idx} - Nessun media_url valido trovato nei children, uso media_url originale.")
 
         post_data = {
             "media_id": post["media_id"],
             "timestamp": date_formatted,
             "permalink": post["permalink"],
             "media_type": post["media_type"],
-            "media_url": post["media_url"],  # URL remoto mantenuto
-            "local_img_path": image_local_path,  # Percorso locale aggiunto
+            "media_url": media_url,
+            "local_img_path": image_local_path,
             "quality_score": post["quality_score"],
-            "caption": post["caption"][:100],  # Caption sintetica, max 100 caratteri
-            # Nuove metriche aggiuntive
-            "impressions": post["impressions"],
+            "caption": post["caption"][:100],
             "reach": post["reach"],
             "saved": post["saved"],
-            "video_views": post["video_views"],
+            "views": post["views"],
             "like_count": post["like_count"],
             "comments_count": post["comments_count"],
-            "engagement_rate": post["engagement_rate"],
+            "total_interactions": post["total_interactions"],
         }
-        logger.info(f"Post {idx} data: {post_data}")
+
+        if post["media_type"] == "CAROUSEL_ALBUM":
+            post_data["shares"] = entry.get("shares", 0)
+            post_data["total_interactions"] = entry.get("total_interactions", 0)
+
+        if post["media_type"].upper() == "VIDEO":
+            post_data["shares"] = entry.get("shares", None)
+            post_data["total_interactions"] = entry.get("total_interactions", None)
+            post_data["ig_reels_avg_watch_time"] = entry.get("ig_reels_avg_watch_time", None)
+            post_data["ig_reels_video_view_total_time"] = entry.get("ig_reels_video_view_total_time", None)
+
+        logger.info(f"[PDF FIELDS OUTPUT] Post {idx}: {post_data}")
 
         top_posts_data.append(post_data)
 

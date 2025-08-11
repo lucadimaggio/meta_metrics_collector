@@ -39,6 +39,9 @@ def get_logger(name: str) -> logging.Logger:
     level_str = os.getenv("LOG_LEVEL", "INFO").upper()
     if level_str not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
         level_str = "INFO"
+    # Ensure minimum INFO level
+    if getattr(logging, level_str) < logging.INFO:
+        level_str = "INFO"
     level = getattr(logging, level_str)
 
     # Read JSON output flag
@@ -55,6 +58,7 @@ def get_logger(name: str) -> logging.Logger:
         if _RICH_AVAILABLE:
             console = RichHandler(rich_tracebacks=True)
             console.setLevel(level)
+            logger.info("Configuring RichHandler for console output")
             logger.addHandler(console)
             logger.debug("RichHandler enabled for console output")
         else:
@@ -64,6 +68,7 @@ def get_logger(name: str) -> logging.Logger:
                 "%(levelname)s | %(asctime)s | %(name)s | %(message)s"
             )
             console.setFormatter(fmt)
+            logger.info("Configuring standard StreamHandler for console output")
             logger.addHandler(console)
             logger.debug("Standard StreamHandler enabled for console output")
 
@@ -112,5 +117,9 @@ def log_step_start(step_number: int, description: str):
 if __name__ != '__main__':
     root_logger = get_logger('meta_metrics_collector')
     root_logger.info("Centralized logger module loaded for Meta Metrics Collector")
+
+# Test logs: verificare che INFO e DEBUG siano emessi correttamente
+root_logger.debug("TEST DEBUG: se vedi questo, LOG_LEVEL=DEBUG è attivo")
+root_logger.info("TEST INFO: test di logging INFO configurato correttamente")
 
 # FILE: utils/logger.py

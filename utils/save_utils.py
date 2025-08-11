@@ -1,6 +1,5 @@
 import os
 import json
-import csv
 import logging
 from typing import List, Dict, Any
 from typing import Optional
@@ -41,81 +40,6 @@ def save_media_as_json(
         logger.error(f"Errore durante il salvataggio JSON per {client_name}: {e}")
 
 
-
-def save_media_as_csv(
-    all_media: List[Dict[str, Any]],
-    client_name: str,
-    since: str,
-    until: str,
-    output_path: str = None
-) -> None:
-    """
-    Salva la lista completa dei media in formato CSV, inclusi i campi metrici.
-    Se output_path è fornito, salva lì il file CSV, altrimenti salva in media/{client_name}.
-    """
-    try:
-        logger.info(f"Salvataggio CSV media avviato per {client_name} dal {since} al {until}")
-
-        if output_path is None:
-            folder_path = os.path.join("media", client_name)
-            os.makedirs(folder_path, exist_ok=True)
-            file_path = os.path.join(folder_path, f"content_report_{since}_{until}.csv")
-        else:
-            folder_path = os.path.dirname(output_path)
-            os.makedirs(folder_path, exist_ok=True)
-            file_path = output_path
-
-        headers = [
-            "media_id", "media_type", "caption", "timestamp", "permalink", "media_url", "children",
-            "impressions", "reach", "saved", "video_views", "like_count", "comments_count", "engagement_rate"
-]
-
-        with open(file_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=headers)
-            writer.writeheader()
-
-            for m in all_media:
-                if not isinstance(m, dict):
-                    logger.warning(f"Riga ignorata: elemento non è un dizionario ({type(m)})")
-                    continue
-
-                try:
-                    children = m.get("children", None)
-
-                    if isinstance(children, list):
-                        children_ids = ";".join(child.get("id", "") for child in children)
-                    elif isinstance(children, dict) and "data" in children:
-                        children_ids = ";".join(child.get("id", "") for child in children.get("data", []))
-                    else:
-                        children_ids = ""
-
-                    row = {
-                        "media_id": m.get("media_id", ""),
-                        "media_type": m.get("media_type", ""),
-                        "caption": m.get("caption", ""),
-                        "timestamp": m.get("timestamp", ""),
-                        "permalink": m.get("permalink", ""),
-                        "media_url": m.get("media_url", ""),
-                        "children": children_ids,
-                        "impressions": m.get("impressions", ""),
-                        "reach": m.get("reach", ""),
-                        "saved": m.get("saved", ""),
-                        "video_views": m.get("video_views", ""),
-                        "like_count": m.get("like_count", ""),
-                        "comments_count": m.get("comments_count", ""),
-                        "engagement_rate": m.get("engagement_rate", "")
-}
-
-
-                    writer.writerow(row)
-
-                except Exception as inner_e:
-                    logger.warning(f"Errore nella riga con ID {m.get('id', 'N/A')}: {inner_e}")
-
-        logger.info(f"[💾] Media CSV salvato in {file_path} ({len(all_media)} record)")
-
-    except Exception as e:
-        logger.error(f"Errore durante il salvataggio CSV per {client_name}: {e}")
 
 
 

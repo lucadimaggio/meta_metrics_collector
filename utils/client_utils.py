@@ -2,6 +2,9 @@ import os
 import json
 import difflib
 from datetime import datetime
+from utils.logger import get_logger
+logger = get_logger(__name__)
+
 
 CLIENTI_JSON = "config/clienti.json"
 
@@ -109,6 +112,20 @@ def save_client_data(client_name, page_id, data):
 
     with open(CLIENTI_JSON, "w", encoding="utf-8") as f:
         json.dump(clienti, f, indent=2, ensure_ascii=False)
+    
+        logger.info(f"File clienti salvato in {CLIENTI_JSON}")
+
+    # 📦 Salvataggio backup
+    backup_dir = "backup_clienti"
+    backup_path = os.path.join(backup_dir, "clienti.json")
+    try:
+        os.makedirs(backup_dir, exist_ok=True)
+        with open(backup_path, "w", encoding="utf-8") as backup_file:
+            json.dump(clienti, backup_file, indent=2, ensure_ascii=False)
+        logger.info(f"Backup creato in {backup_path}")
+    except Exception as e:
+        logger.warning(f"Errore durante il salvataggio backup: {e}")
+
 
 
 # 📤 Caricamento dati cliente

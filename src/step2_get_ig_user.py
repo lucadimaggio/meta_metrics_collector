@@ -9,7 +9,7 @@ def get_instagram_user_id(page_id: str, access_token: str) -> str:
     Restituisce solo il valore ig_user_id (stringa) oppure None se non trovato.
     Non salva nulla su file.
     """
-    url = f"https://graph.facebook.com/v18.0/{page_id}"
+    url = f"https://graph.facebook.com/v23.0/{page_id}"
     params = {
         "fields": "connected_instagram_account",
         "access_token": access_token
@@ -68,6 +68,64 @@ def run(client_name, since, until):
             save_client_data(client_name, page_id, ig_user_id)
         else:
             logger.warning(f"Impossibile recuperare IG User ID per pagina {page_id}")
+
+def run_step2(config: dict) -> dict:
+    """
+    Esegue lo Step 2: recupera l'Instagram User ID per i Page ID presenti in config,
+    aggiorna config con la chiave 'ig_user_id', e restituisce il config aggiornato.
+
+    Parametri:
+    - config: dict con almeno le chiavi 'page_ids' (list di stringhe) e 'access_token' (str).
+
+    Ritorna:
+    - config aggiornato con 'ig_user_id' (str) o None in caso di errore.
+    """
+    logger.info("Inizio Step 2 - Recupero Instagram User ID")
+
+    page_ids = config.get("page_ids")
+    access_token = config.get("access_token")
+    if not page_ids:
+        logger.error("Nessun 'page_ids' fornito nel config")
+        return config
+    if not access_token:
+        logger.error("Nessun 'access_token' fornito nel config")
+        return config
+
+    ig_user_id = None
+    for page_id in page_ids:
+        logger.info(f"Recupero IG User ID per Page ID: {page_id}")
+        try:
+            response = requests.get(
+                f"https://graph.facebook.com/v23.0/{page_id}",
+                params={
+                    "fields": "connected_instagram_account",
+                    "access_token": access_token
+                }
+            )
+            logger.debug(f"Risposta API: {response.status_code} - {response.text}")
+            response.raise_for_status()
+
+            data = response.json()
+            connected_instagram_account = data.get("connected_instagram_account")
+            if connected_instagram_account and "id" in connected_instagram_account:
+                ig_user_id = connected_instagram_account["id"]
+                logger.info(f"IG User ID trovato: {ig_user_id} per Page {page_id}")
+                break  # esce al primo ID valido trovato, rimuovi break se vuoi tutti
+            else:
+                logger.warning(f"Nessun account Instagram collegato alla pagina {page_id}")
+        except Exception as e:
+            logger.error(f"Errore durante il recupero IG User ID per Page {page_id}: {e}")
+
+    if ig_user_id:
+        # Inserisci o aggiorna la chiave 'ig_user_id' in config
+        config['ig_user_id'] = ig_user_id
+        logger.info(f"Aggiornato config con ig_user_id: {ig_user_id}")
+    else:
+        logger.warning("Impossibile recuperare IG User ID da nessuna pagina fornita")
+
+    logger.info("Fine Step 2")
+    return config
+
 
 
 if __name__ == "__main__":

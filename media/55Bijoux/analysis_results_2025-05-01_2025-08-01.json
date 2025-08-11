@@ -1,0 +1,489 @@
+{
+  "media_counts": {
+    "VIDEO": 15,
+    "CAROUSEL_ALBUM": 3
+  },
+  "frequency_stats": {
+    "stats": {
+      "total_days": 93,
+      "active_days_count": 17,
+      "pause_days_count": 76,
+      "peak_days": [
+        "2025-06-09"
+      ],
+      "max_content_count": 2
+    },
+    "detailed_report": [
+      {
+        "date": "2025-05-01",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-02",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-03",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-04",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-05",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-06",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-07",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-08",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-09",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-10",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-11",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-12",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-13",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-14",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-15",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-16",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-17",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-18",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-19",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-20",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-21",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-22",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-23",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-24",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-25",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-26",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-27",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-28",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-29",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-30",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-05-31",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-01",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-02",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-03",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-04",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-05",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-06",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-07",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-08",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-09",
+        "content_count": 2,
+        "is_peak": true
+      },
+      {
+        "date": "2025-06-10",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-11",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-12",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-13",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-14",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-15",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-16",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-17",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-18",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-19",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-20",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-21",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-22",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-23",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-24",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-25",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-26",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-27",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-28",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-29",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-06-30",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-01",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-02",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-03",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-04",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-05",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-06",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-07",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-08",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-09",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-10",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-11",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-12",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-13",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-14",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-15",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-16",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-17",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-18",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-19",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-20",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-21",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-22",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-23",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-24",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-25",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-26",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-27",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-28",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-29",
+        "content_count": 1,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-30",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-07-31",
+        "content_count": 0,
+        "is_peak": false
+      },
+      {
+        "date": "2025-08-01",
+        "content_count": 0,
+        "is_peak": false
+      }
+    ],
+    "report_text": "Analisi pubblicazioni dal 2025-05-01 al 2025-08-01:\nTotale giorni: 93\nGiorni attivi: 17\nGiorni di pausa: 76\nGiorni con picco di pubblicazione (2 contenuti): 2025-06-09\n"
+  },
+  "duration_stats": {
+    "average_duration_seconds": 0.0,
+    "count": 0
+  }
+}

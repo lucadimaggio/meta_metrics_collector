@@ -1,8 +1,8 @@
-python -m src.step1_setup 55Bijoux 2025-07-01 2025-08-01
-python -m src.step2_get_ig_user 55Bijoux 2025-07-01 2025-08-01
-python -m src.step3_get_media 55Bijoux 2025-07-01 2025-08-01
-python -m src.step4_analyze_content 55Bijoux 2025-07-01 2025-08-01
-python -m src.step5_extract_pdf_fields 55Bijoux 2025-07-01 2025-08-01
-python -m src.step6_prepare_images 55Bijoux 2025-07-01 2025-08-01
-python -m src.step7_prepare_data 55Bijoux 2025-07-01 2025-08-01
-python -m src.step8_generate_pdf 55Bijoux 2025-07-01 2025-08-01
+python -m src.step1_setup 55Bijoux 2025-05-01 2025-08-01
+python -m src.step2_get_ig_user 55Bijoux 2025-05-01 2025-08-01
+python -m src.step3_get_media 55Bijoux 2025-05-01 2025-08-01
+python -m src.step4_analyze_content 55Bijoux 2025-05-01 2025-08-01
+python -m src.step5_extract_pdf_fields 55Bijoux 2025-05-01 2025-08-01
+python -m src.step6_prepare_images 55Bijoux 2025-05-01 2025-08-01
+python -m src.step7_prepare_data 55Bijoux 2025-05-01 2025-08-01
+python -m src.step8_generate_pdf 55Bijoux 2025-05-01 2025-08-01

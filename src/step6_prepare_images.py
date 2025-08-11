@@ -77,15 +77,33 @@ def main(client_name, since, until, access_token):
             success = download_file(media_url, local_img_path)
 
         elif media_type == "CAROUSEL_ALBUM":
-            first_img_url = get_carousel_first_image(post.get("media_id"), access_token)
-            if first_img_url:
-                success = download_file(first_img_url, local_img_path)
-            else:
-                reason = "Carosello senza immagine valida"
+            if not media_url:
+                reason = "Carosello senza media_url"
                 logger.warning(f"{reason} per post {filename_base}")
                 failed.append({"media_id": filename_base, "reason": reason})
                 post["download_status"] = f"failed: {reason}"
                 continue
+
+            logger.info(f"Carosello: media_url trovato: {media_url}")
+
+            # Determina se è immagine o video da media_url (tipicamente l'informazione è in media_type)
+            # Consideriamo IMAGE scaricata come jpg, VIDEO o REEL scaricati come mp4 + estrazione frame
+            if media_type == "CAROUSEL_ALBUM" and media_url:
+                # Dato che media_type è CAROUSEL_ALBUM, per sicurezza riusiamo media_url ma controlliamo estensione semplice:
+                if media_url.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    success = download_file(media_url, local_img_path)
+                else:
+                    local_video_path = client_media_dir / f"{filename_base}.mp4"
+                    logger.debug(f"Download video (carosello) in corso: {local_video_path}")
+                    if download_file(media_url, local_video_path):
+                        success = extract_frame(local_video_path, local_img_path)
+                        if success and local_video_path.exists():
+                            local_video_path.unlink()
+                            logger.debug(f"Video temporaneo rimosso: {local_video_path}")
+                    else:
+                        success = False
+
+
 
         elif media_type in ["VIDEO", "REEL"]:
             local_video_path = client_media_dir / f"{filename_base}.mp4"
@@ -96,12 +114,8 @@ def main(client_name, since, until, access_token):
                     local_video_path.unlink()
                     logger.debug(f"Video temporaneo rimosso: {local_video_path}")
 
-        else:
-            reason = f"Tipo media sconosciuto {media_type}"
-            logger.warning(reason)
-            failed.append({"media_id": filename_base, "reason": reason})
-            post["download_status"] = f"failed: {reason}"
-            continue
+        
+        
 
         if success:
             downloaded.append(filename_base)
@@ -122,7 +136,7 @@ def main(client_name, since, until, access_token):
     if failed:
         logger.warning("⚠️ Non scaricati:")
         for f in failed:
-            logger.warning(f"  - {f['id']}: {f['reason']}")
+            logger.warning(f"  - {f['media_id']}: {f['reason']}")
     else:
         logger.info("🎉 Nessun download fallito!")
 
